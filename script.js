@@ -358,90 +358,115 @@ async function initRealTimeTab() {
             }
         });
     }
-    // 6. Line Chart: Doanh thu & Lợi nhuận (Professional Area Style)
-    if (document.getElementById('chart-doanhthu')) {
-        const ctx = document.getElementById('chart-doanhthu').getContext('2d');
+    // 6. Real-time Revenue & Profit Chart (ECharts)
+    const chartDom = document.getElementById('chart-doanhthu');
+    if (chartDom) {
+        const myChart = echarts.init(chartDom);
+        let revenueData = [];
+        let now = new Date();
+        let startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
         
-        // Create Gradients
-        const gradPrimary = ctx.createLinearGradient(0, 0, 0, 300);
-        gradPrimary.addColorStop(0, 'rgba(0, 90, 50, 0.2)');
-        gradPrimary.addColorStop(1, 'rgba(0, 90, 50, 0)');
+        const timeStep = 30 * 1000; // 30-second history intervals
+        let currentLoopTime = startOfDay.getTime();
+        
+        let lastRev = 20 + Math.random() * 10;
 
-        const gradOrange = ctx.createLinearGradient(0, 0, 0, 300);
-        gradOrange.addColorStop(0, 'rgba(249, 115, 22, 0.15)');
-        gradOrange.addColorStop(1, 'rgba(249, 115, 22, 0)');
+        // Generate past data from start of day to now
+        while (currentLoopTime <= now.getTime()) {
+            lastRev = Math.max(0, lastRev + (Math.random() - 0.48) * 4);
+            revenueData.push([currentLoopTime, parseFloat(lastRev.toFixed(2))]);
+            currentLoopTime += timeStep;
+        }
 
-        new Chart(document.getElementById('chart-doanhthu'), {
-            type: 'line',
-            data: {
-                labels: Array.from({ length: 31 }, (_, i) => i + 1),
-                datasets: [
-                    {
-                        label: 'Doanh thu',
-                        data: Array.from({ length: 31 }, () => parseFloat((1.1 + Math.random() * 0.6).toFixed(2))),
-                        borderColor: colorPrimary,
-                        backgroundColor: gradPrimary,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        pointHoverBackgroundColor: colorPrimary,
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2,
-                        borderWidth: 3
-                    },
-                    {
-                        label: 'Lợi nhuận',
-                        data: Array.from({ length: 31 }, () => parseFloat((0.5 + Math.random() * 0.3).toFixed(2))),
-                        borderColor: colorOrange,
-                        backgroundColor: gradOrange,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        pointHoverBackgroundColor: colorOrange,
-                        pointHoverBorderColor: '#fff',
-                        pointHoverBorderWidth: 2,
-                        borderWidth: 2
-                    }
-                ]
+        const option = {
+            color: ['#005a32'],
+            tooltip: {
+                trigger: 'axis',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderWidth: 0,
+                shadowBlur: 10,
+                shadowColor: 'rgba(0,0,0,0.1)',
+                textStyle: { color: '#333', fontSize: 12 },
+                formatter: function (params) {
+                    let date = new Date(params[0].value[0]);
+                    let timeStr = date.toLocaleTimeString('vi-VN', { hour12: false });
+                    let res = `<div style="font-weight:600;margin-bottom:4px;">${timeStr}</div>`;
+                    params.forEach(item => {
+                        res += `<div style="display:flex;justify-content:space-between;gap:20px;">
+                            <span>${item.marker} ${item.seriesName}</span>
+                            <span style="font-weight:600">${item.value[1]} triệu</span>
+                        </div>`;
+                    });
+                    return res;
+                }
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
-                plugins: {
-                    legend: { 
-                        position: 'top', 
-                        align: 'end',
-                        labels: { 
-                            boxWidth: 6, 
-                            usePointStyle: true, 
-                            font: { size: 10, weight: '500' },
-                            padding: 15
-                        } 
-                    },
-                    datalabels: { display: false }
-                },
-                scales: {
-                    y: { 
-                        beginAtZero: true, 
-                        grid: { color: '#f1f1f1' },
-                        ticks: { 
-                            font: { size: 9 },
-                            callback: value => value + ' tỷ'
-                        }
-                    },
-                    x: { 
-                        grid: { display: false }, 
-                        ticks: { font: { size: 9 } } 
+            legend: {
+                data: ['Doanh thu'],
+                right: 10,
+                top: 0,
+                icon: 'circle',
+                itemWidth: 8,
+                textStyle: { fontSize: 11, color: '#666' }
+            },
+            grid: {
+                left: '20',
+                right: '20',
+                bottom: '10',
+                top: '40',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'time',
+                boundaryGap: false,
+                axisLine: { lineStyle: { color: '#eee' } },
+                axisLabel: { color: '#999', fontSize: 10 },
+                splitLine: { show: false }
+            },
+            yAxis: {
+                type: 'value',
+                axisLabel: { color: '#999', fontSize: 10, formatter: '{value} tr' },
+                splitLine: { lineStyle: { type: 'dashed', color: '#f0f0f0' } }
+            },
+            dataZoom: [
+                {
+                    type: 'inside',
+                    xAxisIndex: 0,
+                    filterMode: 'none'
+                }
+            ],
+            series: [
+                {
+                    name: 'Doanh thu',
+                    type: 'line',
+                    smooth: true,
+                    showSymbol: false,
+                    data: revenueData,
+                    lineStyle: { width: 3 },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(0, 90, 50, 0.2)' },
+                            { offset: 1, color: 'rgba(0, 90, 50, 0)' }
+                        ])
                     }
                 }
-            }
-        });
+            ]
+        };
+
+        myChart.setOption(option);
+
+        setInterval(function () {
+            let now = new Date();
+            lastRev = Math.max(0, lastRev + (Math.random() - 0.48) * 8);
+            revenueData.push([now.getTime(), parseFloat(lastRev.toFixed(2))]);
+
+            myChart.setOption({
+                series: [
+                    { data: revenueData }
+                ]
+            });
+        }, 10000);
+
+        window.addEventListener('resize', () => myChart.resize());
     }
 }
 function initHieuQuaTab() {
